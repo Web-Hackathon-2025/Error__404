@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Services - Karigar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="bi bi-tools"></i> Karigar
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="listings.html">Browse Services</a>
+                    </li>
+                    <li class="nav-item" id="authNav">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <h1 class="mb-4">Browse Service Providers</h1>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchQuery" placeholder="Search services or providers...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Tutoring">Tutoring</option>
+                        <option value="Carpentry">Carpentry</option>
+                        <option value="Painting">Painting</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="locationFilter" placeholder="Location (Area/City)">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="searchProviders()">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Providers List -->
+        <div id="providersList">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Book Service</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="bookingModalBody">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentProvider = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update navigation
+            if (authManager.isAuthenticated()) {
+                const user = authManager.getCurrentUser();
+                if (user.role === 'customer') {
+                    document.getElementById('authNav').innerHTML = `
+                        <a class="nav-link" href="customer-dashboard.html">Dashboard</a>
+                    `;
+                }
+            }
+            
+            // Check if provider ID is in URL params
+            const params = utils.getUrlParams();
+            if (params.provider) {
+                viewProvider(params.provider);
+            } else {
+                loadProviders();
+            }
+            
+            // Search on Enter key
+            document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchProviders();
+            });
+            document.getElementById('locationFilter').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchProviders();
+            });
+        });
+        
+        function loadProviders() {
+            const providers = dataManager.getServiceProviders().filter(p => p.status === 'approved');
+            displayProviders(providers);
+        }
+        
+        function searchProviders() {
+            const query = document.getElementById('searchQuery').value;
+            const category = document.getElementById('categoryFilter').value;
+            const location = document.getElementById('locationFilter').value;
+            
+            const providers = dataManager.searchProviders(query, category, location);
+            displayProviders(providers);
+        }
+        
+        function displayProviders(providers) {
+            const providersList = document.getElementById('providersList');
+            
+            if (providers.length === 0) {
+                providersList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-search"></i>
+                        <h5>No providers found</h5>
+                        <p>Try adjusting your search criteria</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            providersList.innerHTML = providers.map(provider => {
+                const servicesList = provider.services.map(s => `<span class="badge bg-secondary me-1">${s}</span>`).join('');
+                const stars = utils.generateStars(provider.rating);
+                
+                return `
+                    <div class="card provider-card mb-3">
+                        <div class="row g-0">
+                            <div class="col-md-3">
+                                <div class="card-img-top">
+                                    <i class="bi bi-person-circle"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-9">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="card-title">${provider.businessName}</h5>
+                                            <p class="text-muted mb-2">
+                                                <i class="bi bi-tag"></i> ${provider.category}<br>
+                                                <i class="bi bi-geo-alt"></i> ${provider.location}
+                                            </p>
+                                            <div class="mb-2">
+                                                ${stars} <span class="ms-1">${provider.rating} (${provider.totalReviews} reviews)</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                ${servicesList}
+                                            </div>
+                                            <p class="card-text">${provider.description}</p>
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-primary" onclick="viewProvider('${provider.id}')">
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function viewProvider(providerId) {
+            if (!authManager.isAuthenticated()) {
+                utils.showAlert('Please login to book services', 'warning');
+                utils.redirect('login.html');
+                return;
+            }
+            
+            if (!authManager.isCustomer()) {
+                utils.showAlert('Only customers can book services', 'warning');
+                return;
+            }
+            
+            const provider = dataManager.getServiceProviderById(providerId);
+            if (!provider) {
+                utils.showAlert('Provider not found', 'danger');
+                return;
+            }
+            
+            currentProvider = provider;
+            showBookingModal(provider);
+        }
+        
+        function showBookingModal(provider) {
+            const modalBody = document.getElementById('bookingModalBody');
+            
+            // Get available time slots
+            const today = new Date();
+            const next7Days = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                next7Days.push(date);
+            }
+            
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            
+            let dateOptions = '';
+            next7Days.forEach(date => {
+                const dayName = days[date.getDay()];
+                const slots = provider.availability[dayName] || [];
+                
+                if (slots.length > 0) {
+                    const dateStr = date.toISOString().split('T')[0];
+                    const dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    dateOptions += `<option value="${dateStr}">${dateLabel}</option>`;
+                }
+            });
+            
+            modalBody.innerHTML = `
+                <div class="mb-3">
+                    <h6>${provider.businessName}</h6>
+                    <p class="text-muted">${provider.category} - ${provider.location}</p>
+                </div>
+                
+                <form id="bookingForm">
+                    <div class="mb-3">
+                        <label class="form-label">Select Service</label>
+                        <select class="form-select" id="serviceSelect" required>
+                            <option value="">Choose a service...</option>
+                            ${provider.services.map(s => `
+                                <option value="${s}" data-price="${provider.pricing[s] || 0}">${s} - ₹${provider.pricing[s] || 0}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Select Date</label>
+                        <select class="form-select" id="dateSelect" required onchange="updateTimeSlots()">
+                            <option value="">Choose a date...</option>
+                            ${dateOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Select Time Slot</label>
+                        <select class="form-select" id="timeSelect" required>
+                            <option value="">Choose a time slot...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Additional Notes (Optional)</label>
+                        <textarea class="form-control" id="notes" rows="3" placeholder="Any special requirements..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Total Price: ₹<span id="totalPrice">0</span></strong>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Submit Booking Request</button>
+                    </div>
+                </form>
+            `;
+            
+            // Update price when service changes
+            document.getElementById('serviceSelect').addEventListener('change', function() {
+                const selected = this.options[this.selectedIndex];
+                const price = selected.dataset.price || 0;
+                document.getElementById('totalPrice').textContent = price;
+            });
+            
+            // Handle form submission
+            document.getElementById('bookingForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitBooking();
+            });
+            
+            const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+        }
+        
+        function updateTimeSlots() {
+            const dateSelect = document.getElementById('dateSelect');
+            const timeSelect = document.getElementById('timeSelect');
+            const selectedDate = dateSelect.value;
+            
+            if (!selectedDate || !currentProvider) return;
+            
+            const date = new Date(selectedDate);
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayName = days[date.getDay()];
+            const slots = currentProvider.availability[dayName] || [];
+            
+            timeSelect.innerHTML = '<option value="">Choose a time slot...</option>';
+            
+            slots.forEach(slot => {
+                // Check if slot is already booked
+                const isBooked = dataManager.checkAvailabilityConflict(currentProvider.id, selectedDate, slot);
+                const disabled = isBooked ? 'disabled' : '';
+                const bookedLabel = isBooked ? ' (Booked)' : '';
+                
+                timeSelect.innerHTML += `<option value="${slot}" ${disabled}>${slot}${bookedLabel}</option>`;
+            });
+        }
+        
+        function submitBooking() {
+            const service = document.getElementById('serviceSelect').value;
+            const date = document.getElementById('dateSelect').value;
+            const timeSlot = document.getElementById('timeSelect').value;
+            const notes = document.getElementById('notes').value;
+            const price = document.getElementById('serviceSelect').options[document.getElementById('serviceSelect').selectedIndex].dataset.price;
+            
+            if (!service || !date || !timeSlot) {
+                utils.showAlert('Please fill all required fields', 'danger');
+                return;
+            }
+            
+            // Check availability conflict
+            if (dataManager.checkAvailabilityConflict(currentProvider.id, date, timeSlot)) {
+                utils.showAlert('This time slot is already booked. Please select another.', 'danger');
+                return;
+            }
+            
+            const user = authManager.getCurrentUser();
+            
+            const booking = dataManager.createBooking({
+                customerId: user.id,
+                customerName: user.name,
+                providerId: currentProvider.id,
+                providerName: currentProvider.businessName,
+                service: service,
+                date: date,
+                timeSlot: timeSlot,
+                price: parseInt(price),
+                notes: notes
+            });
+            
+            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+            utils.showAlert('Booking request submitted successfully!', 'success');
+            
+            setTimeout(() => {
+                if (authManager.isCustomer()) {
+                    utils.redirect('customer-dashboard.html');
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
+
