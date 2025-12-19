@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard - Karigar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <div class="logo-icon">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <span class="logo-text">Karigar</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="listings.html">Browse Services</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="handleLogout()">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <h1 class="mb-2">Customer Dashboard</h1>
+            <p class="mb-0" id="welcomeMessage">Welcome back!</p>
+        </div>
+    </div>
+
+    <div class="container my-4">
+        <!-- Stats -->
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3 id="totalBookings">0</h3>
+                <p>Total Bookings</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pendingBookings">0</h3>
+                <p>Pending Requests</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="confirmedBookings">0</h3>
+                <p>Confirmed</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completedBookings">0</h3>
+                <p>Completed</p>
+            </div>
+        </div>
+
+        <!-- My Bookings -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">My Bookings</h5>
+            </div>
+            <div class="card-body">
+                <div id="bookingsList">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!utils.requireAuth('customer')) return;
+            
+            const user = authManager.getCurrentUser();
+            document.getElementById('welcomeMessage').textContent = `Welcome, ${user.name}!`;
+            
+            loadDashboard();
+        });
+        
+        function loadDashboard() {
+            const user = authManager.getCurrentUser();
+            const bookings = dataManager.getBookingsByCustomerId(user.id);
+            
+            // Update stats
+            document.getElementById('totalBookings').textContent = bookings.length;
+            document.getElementById('pendingBookings').textContent = bookings.filter(b => b.status === 'requested').length;
+            document.getElementById('confirmedBookings').textContent = bookings.filter(b => b.status === 'confirmed').length;
+            document.getElementById('completedBookings').textContent = bookings.filter(b => b.status === 'completed').length;
+            
+            // Display bookings
+            const bookingsList = document.getElementById('bookingsList');
+            
+            if (bookings.length === 0) {
+                bookingsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <h5>No bookings yet</h5>
+                        <p>Start by browsing our service providers!</p>
+                        <a href="listings.html" class="btn btn-primary">Browse Services</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort bookings by date (newest first)
+            bookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            bookingsList.innerHTML = bookings.map(booking => {
+                const provider = dataManager.getServiceProviderById(booking.providerId);
+                const statusClass = `status-${booking.status}`;
+                
+                return `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title">${provider ? provider.businessName : 'Unknown Provider'}</h5>
+                                    <p class="text-muted mb-2">
+                                        <i class="bi bi-calendar"></i> ${utils.formatDate(booking.date)}<br>
+                                        <i class="bi bi-clock"></i> ${booking.timeSlot}<br>
+                                        <i class="bi bi-tag"></i> ${booking.service}<br>
+                                        <i class="bi bi-currency-rupee"></i> ${booking.price}
+                                    </p>
+                                    <span class="badge status-badge ${statusClass}">${booking.status.toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    ${booking.status === 'completed' && !booking.reviewed ? `
+                                        <button class="btn btn-sm btn-primary" onclick="showReviewModal('${booking.id}')">
+                                            Leave Review
+                                        </button>
+                                    ` : ''}
+                                    ${booking.status === 'requested' || booking.status === 'confirmed' ? `
+                                        <button class="btn btn-sm btn-danger" onclick="cancelBooking('${booking.id}')">
+                                            Cancel
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function cancelBooking(bookingId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                dataManager.updateBooking(bookingId, { status: 'cancelled' });
+                utils.showAlert('Booking cancelled successfully', 'success');
+                loadDashboard();
+            }
+        }
+        
+        function showReviewModal(bookingId) {
+            const booking = dataManager.getBookingById(bookingId);
+            const provider = dataManager.getServiceProviderById(booking.providerId);
+            
+            const modalHTML = `
+                <div class="modal fade" id="reviewModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Leave a Review</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Service: ${booking.service} with ${provider.businessName}</p>
+                                <div class="mb-3">
+                                    <label class="form-label">Rating</label>
+                                    <select class="form-select" id="reviewRating">
+                                        <option value="5">5 - Excellent</option>
+                                        <option value="4">4 - Very Good</option>
+                                        <option value="3">3 - Good</option>
+                                        <option value="2">2 - Fair</option>
+                                        <option value="1">1 - Poor</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Review</label>
+                                    <textarea class="form-control" id="reviewText" rows="3" placeholder="Share your experience..."></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" onclick="submitReview('${bookingId}')">Submit Review</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+            
+            document.getElementById('reviewModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+        
+        function submitReview(bookingId) {
+            const booking = dataManager.getBookingById(bookingId);
+            const rating = parseInt(document.getElementById('reviewRating').value);
+            const text = document.getElementById('reviewText').value;
+            
+            if (!text.trim()) {
+                utils.showAlert('Please write a review', 'danger');
+                return;
+            }
+            
+            const user = authManager.getCurrentUser();
+            dataManager.createReview({
+                bookingId: bookingId,
+                customerId: user.id,
+                customerName: user.name,
+                providerId: booking.providerId,
+                rating: rating,
+                text: text
+            });
+            
+            dataManager.updateBooking(bookingId, { reviewed: true });
+            
+            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+            utils.showAlert('Review submitted successfully!', 'success');
+            loadDashboard();
+        }
+        
+        function handleLogout() {
+            authManager.logout();
+            utils.redirect('index.html');
+        }
+    </script>
+</body>
+</html>
+
