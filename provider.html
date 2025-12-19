@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Dashboard - Karigar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <div class="logo-icon">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <span class="logo-text">Karigar</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="provider-dashboard.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="handleLogout()">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <h1 class="mb-2">Service Provider Dashboard</h1>
+            <p class="mb-0" id="welcomeMessage">Manage your services and bookings</p>
+        </div>
+    </div>
+
+    <div class="container my-4">
+        <!-- Profile Status -->
+        <div id="profileStatus"></div>
+        
+        <!-- Stats -->
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3 id="totalRequests">0</h3>
+                <p>Total Requests</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pendingRequests">0</h3>
+                <p>Pending</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="confirmedRequests">0</h3>
+                <p>Confirmed</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completedRequests">0</h3>
+                <p>Completed</p>
+            </div>
+        </div>
+
+        <!-- Profile Management -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Service Profile</h5>
+                <button class="btn btn-sm btn-primary" onclick="toggleProfileForm()" id="toggleProfileBtn">
+                    <i class="bi bi-pencil"></i> Edit Profile
+                </button>
+            </div>
+            <div class="card-body" id="profileView">
+                <!-- Profile will be loaded here -->
+            </div>
+            <div class="card-body" id="profileForm" style="display: none;">
+                <form id="profileFormElement">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Business Name</label>
+                            <input type="text" class="form-control" id="businessName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="category" required>
+                                <option value="">Select Category</option>
+                                <option value="Plumbing">Plumbing</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Cleaning">Cleaning</option>
+                                <option value="Tutoring">Tutoring</option>
+                                <option value="Carpentry">Carpentry</option>
+                                <option value="Painting">Painting</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Services Offered (comma-separated)</label>
+                        <input type="text" class="form-control" id="services" placeholder="e.g., Pipe Repair, Leak Fixing, Installation" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Pricing (JSON format: {"Service Name": price})</label>
+                        <textarea class="form-control" id="pricing" rows="3" placeholder='{"Pipe Repair": 500, "Leak Fixing": 300}' required></textarea>
+                        <small class="text-muted">Enter pricing in JSON format</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Availability</label>
+                        <div id="availabilityForm">
+                            <!-- Availability will be generated here -->
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary" onclick="toggleProfileForm()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Booking Requests -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Requests</h5>
+            </div>
+            <div class="card-body">
+                <div id="requestsList">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!utils.requireAuth('provider')) return;
+            
+            const user = authManager.getCurrentUser();
+            document.getElementById('welcomeMessage').textContent = `Welcome, ${user.name}!`;
+            
+            loadDashboard();
+            loadProfile();
+        });
+        
+        function loadDashboard() {
+            const user = authManager.getCurrentUser();
+            const provider = dataManager.getServiceProviderByUserId(user.id);
+            
+            if (!provider) {
+                document.getElementById('profileStatus').innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Profile Not Created!</strong> Please create your service profile to start receiving bookings.
+                    </div>
+                `;
+                toggleProfileForm();
+                return;
+            }
+            
+            const bookings = dataManager.getBookingsByProviderId(provider.id);
+            
+            // Update stats
+            document.getElementById('totalRequests').textContent = bookings.length;
+            document.getElementById('pendingRequests').textContent = bookings.filter(b => b.status === 'requested').length;
+            document.getElementById('confirmedRequests').textContent = bookings.filter(b => b.status === 'confirmed').length;
+            document.getElementById('completedRequests').textContent = bookings.filter(b => b.status === 'completed').length;
+            
+            loadRequests(bookings);
+        }
+        
+        function loadProfile() {
+            const user = authManager.getCurrentUser();
+            const provider = dataManager.getServiceProviderByUserId(user.id);
+            
+            if (!provider) {
+                initializeAvailabilityForm();
+                return;
+            }
+            
+            // Display profile
+            const profileView = document.getElementById('profileView');
+            const servicesList = provider.services.map(s => `<span class="badge bg-secondary me-1">${s}</span>`).join('');
+            const pricingList = Object.entries(provider.pricing).map(([service, price]) => 
+                `<tr><td>${service}</td><td>₹${price}</td></tr>`
+            ).join('');
+            
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const availabilityList = days.map((day, idx) => {
+                const slots = provider.availability[day] || [];
+                return `<div class="mb-2"><strong>${dayLabels[idx]}:</strong> ${slots.length > 0 ? slots.join(', ') : 'Not available'}</div>`;
+            }).join('');
+            
+            profileView.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>${provider.businessName}</h5>
+                        <p class="text-muted">${provider.category} - ${provider.location}</p>
+                        <p>${provider.description}</p>
+                        <div class="mb-3">
+                            <strong>Services:</strong><br>
+                            ${servicesList}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Pricing</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pricingList}
+                            </tbody>
+                        </table>
+                        <h6 class="mt-3">Availability</h6>
+                        ${availabilityList}
+                        <div class="mt-3">
+                            <span class="badge bg-success">Rating: ${provider.rating} ⭐ (${provider.totalReviews} reviews)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Populate form
+            document.getElementById('businessName').value = provider.businessName;
+            document.getElementById('category').value = provider.category;
+            document.getElementById('description').value = provider.description;
+            document.getElementById('services').value = provider.services.join(', ');
+            document.getElementById('pricing').value = JSON.stringify(provider.pricing, null, 2);
+            
+            initializeAvailabilityForm(provider.availability);
+        }
+        
+        function initializeAvailabilityForm(availability = null) {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const timeSlots = ['09:00-12:00', '12:00-15:00', '15:00-18:00', '18:00-21:00'];
+            
+            const availabilityForm = document.getElementById('availabilityForm');
+            availabilityForm.innerHTML = days.map((day, idx) => {
+                const currentSlots = availability && availability[day] ? availability[day] : [];
+                const checkedSlots = timeSlots.map(slot => 
+                    `<div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="${day}" value="${slot}" id="${day}_${slot}" ${currentSlots.includes(slot) ? 'checked' : ''}>
+                        <label class="form-check-label" for="${day}_${slot}">${slot}</label>
+                    </div>`
+                ).join('');
+                
+                return `
+                    <div class="mb-3">
+                        <label class="form-label"><strong>${dayLabels[idx]}</strong></label>
+                        <div>${checkedSlots}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function toggleProfileForm() {
+            const profileView = document.getElementById('profileView');
+            const profileForm = document.getElementById('profileForm');
+            const toggleBtn = document.getElementById('toggleProfileBtn');
+            
+            if (profileForm.style.display === 'none') {
+                profileView.style.display = 'none';
+                profileForm.style.display = 'block';
+                toggleBtn.innerHTML = '<i class="bi bi-x"></i> Cancel';
+            } else {
+                profileView.style.display = 'block';
+                profileForm.style.display = 'none';
+                toggleBtn.innerHTML = '<i class="bi bi-pencil"></i> Edit Profile';
+                loadProfile();
+            }
+        }
+        
+        document.getElementById('profileFormElement').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveProfile();
+        });
+        
+        function saveProfile() {
+            const user = authManager.getCurrentUser();
+            const businessName = document.getElementById('businessName').value;
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value;
+            const services = document.getElementById('services').value.split(',').map(s => s.trim()).filter(s => s);
+            let pricing;
+            
+            try {
+                pricing = JSON.parse(document.getElementById('pricing').value);
+            } catch (e) {
+                utils.showAlert('Invalid pricing format. Please use valid JSON.', 'danger');
+                return;
+            }
+            
+            // Get availability
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const availability = {};
+            days.forEach(day => {
+                const checkboxes = document.querySelectorAll(`input[name="${day}"]:checked`);
+                availability[day] = Array.from(checkboxes).map(cb => cb.value);
+            });
+            
+            const existingProvider = dataManager.getServiceProviderByUserId(user.id);
+            const providerData = {
+                id: existingProvider ? existingProvider.id : Date.now().toString(),
+                userId: user.id,
+                businessName: businessName,
+                category: category,
+                services: services,
+                pricing: pricing,
+                description: description,
+                availability: availability,
+                location: user.location,
+                rating: existingProvider ? existingProvider.rating : 0,
+                totalReviews: existingProvider ? existingProvider.totalReviews : 0,
+                status: existingProvider ? existingProvider.status : 'pending'
+            };
+            
+            dataManager.saveServiceProvider(providerData);
+            utils.showAlert('Profile saved successfully!', 'success');
+            toggleProfileForm();
+            loadDashboard();
+        }
+        
+        function loadRequests(bookings) {
+            const requestsList = document.getElementById('requestsList');
+            
+            if (bookings.length === 0) {
+                requestsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h5>No booking requests yet</h5>
+                        <p>Your booking requests will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by date (newest first)
+            bookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            requestsList.innerHTML = bookings.map(booking => {
+                const statusClass = `status-${booking.status}`;
+                const user = dataManager.getAllUsers().find(u => u.id === booking.customerId);
+                
+                let actions = '';
+                if (booking.status === 'requested') {
+                    actions = `
+                        <button class="btn btn-sm btn-success me-2" onclick="updateRequestStatus('${booking.id}', 'confirmed')">
+                            Accept
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="updateRequestStatus('${booking.id}', 'cancelled')">
+                            Reject
+                        </button>
+                    `;
+                } else if (booking.status === 'confirmed') {
+                    actions = `
+                        <button class="btn btn-sm btn-primary me-2" onclick="updateRequestStatus('${booking.id}', 'completed')">
+                            Mark Complete
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="updateRequestStatus('${booking.id}', 'cancelled')">
+                            Cancel
+                        </button>
+                    `;
+                }
+                
+                return `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title">${booking.service}</h5>
+                                    <p class="text-muted mb-2">
+                                        <i class="bi bi-person"></i> ${booking.customerName || user?.name || 'Unknown'}<br>
+                                        <i class="bi bi-calendar"></i> ${utils.formatDate(booking.date)}<br>
+                                        <i class="bi bi-clock"></i> ${booking.timeSlot}<br>
+                                        <i class="bi bi-currency-rupee"></i> ${booking.price}
+                                    </p>
+                                    ${booking.notes ? `<p class="mb-2"><strong>Notes:</strong> ${booking.notes}</p>` : ''}
+                                    <span class="badge status-badge ${statusClass}">${booking.status.toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    ${actions}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateRequestStatus(bookingId, newStatus) {
+            if (newStatus === 'cancelled' && !confirm('Are you sure you want to cancel this booking?')) {
+                return;
+            }
+            
+            dataManager.updateBooking(bookingId, { status: newStatus });
+            utils.showAlert(`Booking ${newStatus} successfully!`, 'success');
+            loadDashboard();
+        }
+        
+        function handleLogout() {
+            authManager.logout();
+            utils.redirect('index.html');
+        }
+    </script>
+</body>
+</html>
+
