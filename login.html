@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Karigar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <div class="logo-icon">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <span class="logo-text">Karigar</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Login Form -->
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-body p-5">
+                        <h2 class="card-title text-center mb-4">Login</h2>
+                        
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+                        </form>
+                        
+                        <div class="text-center">
+                            <p>Don't have an account? <a href="register.html">Register here</a></p>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <small class="text-muted">Demo Accounts:</small>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-secondary me-2" onclick="fillDemo('customer')">Customer</button>
+                                <button class="btn btn-sm btn-outline-secondary me-2" onclick="fillDemo('provider')">Provider</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="fillDemo('admin')">Admin</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Redirect if already logged in
+            if (authManager.isAuthenticated()) {
+                const user = authManager.getCurrentUser();
+                if (user.role === 'customer') {
+                    utils.redirect('customer-dashboard.html');
+                } else if (user.role === 'provider') {
+                    utils.redirect('provider-dashboard.html');
+                } else if (user.role === 'admin') {
+                    utils.redirect('admin-panel.html');
+                }
+            }
+            
+            // Handle login form
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                const result = authManager.login(email, password);
+                
+                if (result.success) {
+                    utils.showAlert('Login successful!', 'success');
+                    
+                    setTimeout(() => {
+                        const user = result.user;
+                        if (user.role === 'customer') {
+                            utils.redirect('customer-dashboard.html');
+                        } else if (user.role === 'provider') {
+                            utils.redirect('provider-dashboard.html');
+                        } else if (user.role === 'admin') {
+                            utils.redirect('admin-panel.html');
+                        }
+                    }, 500);
+                } else {
+                    utils.showAlert(result.message, 'danger');
+                }
+            });
+        });
+        
+        function fillDemo(role) {
+            const demos = {
+                customer: { email: 'customer@test.com', password: 'customer123' },
+                provider: { email: 'provider@test.com', password: 'provider123' },
+                admin: { email: 'admin@karigar.com', password: 'admin123' }
+            };
+            
+            const demo = demos[role];
+            document.getElementById('email').value = demo.email;
+            document.getElementById('password').value = demo.password;
+        }
+    </script>
+</body>
+</html>
+
