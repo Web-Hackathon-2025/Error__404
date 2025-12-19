@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Profile - Karigar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <div class="logo-icon">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <span class="logo-text">Karigar</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="listings.html">Browse Services</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div id="providerProfile">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = utils.getUrlParams();
+            const providerId = params.id;
+            
+            if (!providerId) {
+                document.getElementById('providerProfile').innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <h5>Provider not found</h5>
+                        <a href="listings.html" class="btn btn-primary">Browse Providers</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            loadProviderProfile(providerId);
+        });
+        
+        function loadProviderProfile(providerId) {
+            const provider = dataManager.getServiceProviderById(providerId);
+            const reviews = dataManager.getReviewsByProviderId(providerId);
+            const profileDiv = document.getElementById('providerProfile');
+            
+            if (!provider) {
+                profileDiv.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <h5>Provider not found</h5>
+                        <a href="listings.html" class="btn btn-primary">Browse Providers</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            const stars = utils.generateStars(provider.rating);
+            const servicesList = provider.services.map(s => `<span class="badge bg-primary me-2 mb-2">${s}</span>`).join('');
+            
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const availabilityList = days.map((day, idx) => {
+                const slots = provider.availability[day] || [];
+                return `<div class="mb-2"><strong>${dayLabels[idx]}:</strong> ${slots.length > 0 ? slots.join(', ') : 'Not available'}</div>`;
+            }).join('');
+            
+            const pricingList = Object.entries(provider.pricing).map(([service, price]) => 
+                `<tr><td>${service}</td><td class="text-end">₹${price}</td></tr>`
+            ).join('');
+            
+            const reviewsHTML = reviews.length > 0 ? reviews.map(review => {
+                const reviewStars = utils.generateStars(review.rating);
+                return `
+                    <div class="card mb-3 review-card">
+                        <div class="card-body">
+                            <div class="review-header">
+                                <div>
+                                    <h6>${review.customerName}</h6>
+                                </div>
+                                <div class="text-end">
+                                    <div class="rating">${reviewStars}</div>
+                                    <small class="text-muted">${utils.formatDate(review.createdAt)}</small>
+                                </div>
+                            </div>
+                            <p class="mb-0">${review.text}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('') : '<p class="text-muted">No reviews yet.</p>';
+            
+            profileDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h2 class="mb-3">${provider.businessName}</h2>
+                                <p class="text-muted mb-3">
+                                    <i class="bi bi-tag"></i> ${provider.category} | 
+                                    <i class="bi bi-geo-alt"></i> ${provider.location}
+                                </p>
+                                <div class="mb-3">
+                                    ${stars} <span class="ms-2">${provider.rating} (${provider.totalReviews} reviews)</span>
+                                </div>
+                                <p>${provider.description}</p>
+                                
+                                <h5 class="mt-4 mb-3">Services Offered</h5>
+                                <div class="mb-4">
+                                    ${servicesList}
+                                </div>
+                                
+                                <h5 class="mt-4 mb-3">Pricing</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Service</th>
+                                                <th class="text-end">Price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${pricingList}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <h5 class="mt-4 mb-3">Availability</h5>
+                                ${availabilityList}
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Reviews (${reviews.length})</h5>
+                            </div>
+                            <div class="card-body">
+                                ${reviewsHTML}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>Book This Service</h5>
+                                <p class="text-muted">Ready to book? Click below to get started.</p>
+                                ${authManager.isAuthenticated() && authManager.isCustomer() ? `
+                                    <button class="btn btn-primary w-100" onclick="bookService('${provider.id}')">
+                                        Book Now
+                                    </button>
+                                ` : `
+                                    <a href="login.html" class="btn btn-primary w-100">Login to Book</a>
+                                `}
+                                <a href="listings.html" class="btn btn-outline-secondary w-100 mt-2">Back to Listings</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function bookService(providerId) {
+            window.location.href = `listings.html?provider=${providerId}`;
+        }
+    </script>
+</body>
+</html>
+
